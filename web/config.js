@@ -24,7 +24,7 @@ const config = {
   app: {
     name: "Carnalito",
     description:
-      "Sistema digital de pedidos para Los Carnales: tacos, montados, gringas y bebidas desde el celular.",
+      "Sistema digital de pedidos para Los Carnales: tacos, montados, quesicarnes y bebidas desde el celular.",
     domain: "vibefast.dev", // sin https://, sin www
     locale: "es", // "es" | "en"
     // URL pública: usa NEXT_PUBLIC_APP_URL en .env. En este config solo definimos el default.
@@ -108,7 +108,7 @@ const config = {
     ],
     hero: {
       eyebrow: "Curso Vibecoding · Remotto × Startup Chihuahua",
-      title: "Pide tus tacos, montados y gringas sin enredos.",
+      title: "Pide tus tacos, montados y quesicarnes sin enredos.",
       subtitle:
         "VibeFast es la plantilla del curso: Next.js, Supabase, OpenAI y MCP cableados desde el día 1. Tú extiendes con prompts en Cursor.",
       cta: { label: "Únete al waitlist", href: "#waitlist" },
