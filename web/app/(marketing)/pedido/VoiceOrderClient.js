@@ -1,99 +1,130 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Mic, MicOff, RotateCcw } from "lucide-react"
-
-function getSpeechRecognition() {
-  if (typeof window === "undefined") return null
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null
-}
+import { useRef, useState } from "react"
+import { LoaderCircle, Mic, MicOff, RotateCcw } from "lucide-react"
 
 export default function VoiceOrderClient() {
-  const recognitionRef = useRef(null)
-  const [supported, setSupported] = useState(true)
+  const recorderRef = useRef(null)
+  const streamRef = useRef(null)
+  const chunksRef = useRef([])
+
+  const [supported] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder)
+  )
   const [listening, setListening] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [transcript, setTranscript] = useState("")
   const [status, setStatus] = useState("Listo para escuchar tu pedido.")
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    const SpeechRecognition = getSpeechRecognition()
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+  }
 
-    if (!SpeechRecognition || !navigator.mediaDevices?.getUserMedia) {
-      setSupported(false)
-      setStatus("Este navegador no ofrece reconocimiento de voz compatible.")
-      return
-    }
+  async function transcribeAudio(blob) {
+    setProcessing(true)
+    setStatus("Transcribiendo tu pedido…")
 
-    const recognition = new SpeechRecognition()
-    recognition.lang = "es-MX"
-    recognition.continuous = false
-    recognition.interimResults = true
+    try {
+      const formData = new FormData()
+      const extension = blob.type.includes("ogg") ? "ogg" : "webm"
+      formData.append("audio", blob, `pedido.${extension}`)
 
-    recognition.onstart = () => {
-      setListening(true)
-      setError("")
-      setStatus("Escuchando… di tu pedido con naturalidad.")
-    }
+      const response = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        body: formData,
+      })
 
-    recognition.onresult = (event) => {
-      let text = ""
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        text += event.results[i][0].transcript
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "No fue posible transcribir el audio.")
       }
-      setTranscript(text.trim())
-    }
 
-    recognition.onerror = (event) => {
-      setListening(false)
-      const messages = {
-        "not-allowed": "No se concedió permiso para usar el micrófono.",
-        "audio-capture": "No se detectó un micrófono disponible.",
-        "no-speech": "No se detectó voz. Intenta nuevamente.",
-        network: "El reconocimiento de voz tuvo un problema de red.",
-      }
-      const message = messages[event.error] || "No fue posible reconocer la voz."
-      setError(message)
+      setTranscript(data.text)
+      setStatus("Captura terminada. Revisa el texto reconocido.")
+    } catch (transcriptionError) {
+      console.error(transcriptionError)
+      setError(transcriptionError.message || "No fue posible transcribir el audio.")
       setStatus("La prueba se detuvo.")
+    } finally {
+      setProcessing(false)
     }
-
-    recognition.onend = () => {
-      setListening(false)
-      setStatus((current) =>
-        current.startsWith("La prueba") ? current : "Captura terminada. Revisa el texto reconocido."
-      )
-    }
-
-    recognitionRef.current = recognition
-
-    return () => {
-      recognition.abort()
-      recognitionRef.current = null
-    }
-  }, [])
+  }
 
   async function startListening() {
     setError("")
+    setTranscript("")
 
-    if (!supported || !recognitionRef.current) return
+    if (!supported) {
+      setError("Este navegador no permite grabar audio desde esta página.")
+      return
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach((track) => track.stop())
-      setTranscript("")
-      recognitionRef.current.start()
+      streamRef.current = stream
+      chunksRef.current = []
+
+      const preferredType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : ""
+
+      const recorder = preferredType
+        ? new MediaRecorder(stream, { mimeType: preferredType })
+        : new MediaRecorder(stream)
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data)
+      }
+
+      recorder.onerror = () => {
+        setListening(false)
+        stopStream()
+        setError("Ocurrió un problema mientras se grababa el audio.")
+        setStatus("La prueba se detuvo.")
+      }
+
+      recorder.onstop = async () => {
+        setListening(false)
+        const mimeType = recorder.mimeType || "audio/webm"
+        const blob = new Blob(chunksRef.current, { type: mimeType })
+        stopStream()
+
+        if (blob.size === 0) {
+          setError("No se capturó audio. Intenta nuevamente.")
+          setStatus("La prueba se detuvo.")
+          return
+        }
+
+        await transcribeAudio(blob)
+      }
+
+      recorderRef.current = recorder
+      recorder.start()
+      setListening(true)
+      setStatus("Escuchando… di tu pedido y luego presiona Detener.")
     } catch (permissionError) {
       console.error(permissionError)
+      stopStream()
       setError("No se pudo acceder al micrófono. Revisa los permisos del navegador.")
       setStatus("Permiso de micrófono requerido.")
     }
   }
 
   function stopListening() {
-    recognitionRef.current?.stop()
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop()
+    }
   }
 
   function resetTranscript() {
+    if (listening || processing) return
     setTranscript("")
     setError("")
     setStatus("Listo para escuchar tu pedido.")
@@ -111,18 +142,24 @@ export default function VoiceOrderClient() {
           type="button"
           className={`btn ${listening ? "btn-error" : "btn-primary"}`}
           onClick={listening ? stopListening : startListening}
-          disabled={!supported}
+          disabled={!supported || processing}
         >
-          {listening ? <MicOff size={18} /> : <Mic size={18} />}
-          {listening ? "Detener" : "Hablar"}
+          {processing ? (
+            <LoaderCircle className="animate-spin" size={18} />
+          ) : listening ? (
+            <MicOff size={18} />
+          ) : (
+            <Mic size={18} />
+          )}
+          {processing ? "Procesando" : listening ? "Detener" : "Hablar"}
         </button>
       </div>
 
       {!supported && (
         <div className="alert alert-warning mt-5" role="status">
           <span>
-            Prueba esta función en una versión reciente de Chrome o Edge. El pedido escrito
-            seguirá siendo una alternativa cuando añadamos el flujo completo.
+            Este navegador no ofrece grabación de audio compatible. El pedido escrito seguirá
+            disponible como alternativa cuando añadamos el flujo completo.
           </span>
         </div>
       )}
@@ -140,7 +177,7 @@ export default function VoiceOrderClient() {
             type="button"
             className="btn btn-ghost btn-sm"
             onClick={resetTranscript}
-            disabled={!transcript && !error}
+            disabled={listening || processing || (!transcript && !error)}
           >
             <RotateCcw size={15} />
             Limpiar
