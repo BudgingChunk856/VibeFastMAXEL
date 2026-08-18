@@ -2,13 +2,19 @@
 
 import { useMemo, useState } from "react"
 import {
+  ArrowLeft,
   Beef,
   CupSoda,
+  MapPin,
   Minus,
+  PackageCheck,
+  Phone,
   Plus,
   ShoppingBag,
   Sparkles,
+  Store,
   Trash2,
+  UserRound,
   UtensilsCrossed,
 } from "lucide-react"
 
@@ -98,10 +104,19 @@ function formatPrice(price) {
   }).format(price)
 }
 
+function normalizedPhone(value) {
+  return value.replace(/\D/g, "")
+}
+
 export default function DigitalMenuClient() {
   const [activeCategory, setActiveCategory] = useState("todos")
   const [cart, setCart] = useState({})
   const [cartOpen, setCartOpen] = useState(false)
+  const [checkoutStep, setCheckoutStep] = useState("cart")
+  const [orderType, setOrderType] = useState("")
+  const [customerName, setCustomerName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [table, setTable] = useState("")
 
   const visibleProducts = useMemo(() => {
     if (activeCategory === "todos") return products
@@ -117,6 +132,13 @@ export default function DigitalMenuClient() {
   )
 
   const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
+  const phoneDigits = normalizedPhone(phone)
+  const customerDataValid =
+    customerName.trim().length >= 2 &&
+    phoneDigits.length >= 10 &&
+    phoneDigits.length <= 15 &&
+    Boolean(orderType) &&
+    (orderType !== "dine-in" || table.trim().length > 0)
 
   function addProduct(productId) {
     setCart((current) => ({
@@ -143,6 +165,16 @@ export default function DigitalMenuClient() {
       delete next[productId]
       return next
     })
+  }
+
+  function closeCart() {
+    setCartOpen(false)
+    setCheckoutStep("cart")
+  }
+
+  function openCart() {
+    setCheckoutStep("cart")
+    setCartOpen(true)
   }
 
   return (
@@ -186,9 +218,7 @@ export default function DigitalMenuClient() {
 
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-              Los Carnales
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Los Carnales</p>
             <h2 className="mt-1 text-2xl font-black text-base-content">Nuestro menú</h2>
           </div>
           <span className="hidden text-sm text-base-content/50 sm:block">
@@ -218,20 +248,13 @@ export default function DigitalMenuClient() {
                 </div>
 
                 <div className="p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary/80">
-                    {product.detail}
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary/80">{product.detail}</p>
                   <h3 className="mt-1 text-xl font-black text-base-content">{product.name}</h3>
-
-                  <p className="mt-3 text-sm leading-6 text-base-content/60">
-                    {product.description}
-                  </p>
+                  <p className="mt-3 text-sm leading-6 text-base-content/60">{product.description}</p>
 
                   {product.ingredients.length > 0 && (
                     <div className="mt-4 rounded-2xl bg-base-200/70 p-4">
-                      <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-base-content/55">
-                        Incluye
-                      </p>
+                      <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-base-content/55">Incluye</p>
                       <div className="flex flex-wrap gap-2">
                         {product.ingredients.map((ingredient) => (
                           <span
@@ -248,9 +271,7 @@ export default function DigitalMenuClient() {
                   <div className="mt-5 flex items-end justify-between gap-3 border-t border-base-300 pt-4">
                     <div>
                       <p className="text-xs text-base-content/45">Precio</p>
-                      <p className="mt-0.5 text-sm font-extrabold text-base-content">
-                        {formatPrice(product.price)}
-                      </p>
+                      <p className="mt-0.5 text-sm font-extrabold text-base-content">{formatPrice(product.price)}</p>
                     </div>
 
                     {quantity === 0 ? (
@@ -296,7 +317,7 @@ export default function DigitalMenuClient() {
           <div className="mx-auto max-w-3xl">
             <button
               type="button"
-              onClick={() => setCartOpen(true)}
+              onClick={openCart}
               className="flex w-full items-center justify-between rounded-2xl bg-neutral px-5 py-4 text-neutral-content shadow-2xl transition hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-3">
@@ -320,80 +341,250 @@ export default function DigitalMenuClient() {
       )}
 
       {cartOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/45 p-4 backdrop-blur-sm"
-          onClick={() => setCartOpen(false)}
-        >
+        <div className="fixed inset-0 z-50 bg-black/45 p-4 backdrop-blur-sm" onClick={closeCart}>
           <div
             className="ml-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-3xl bg-base-100 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-base-300 p-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Los Carnales</p>
-                <h2 className="mt-1 text-2xl font-black">Tu pedido</h2>
+              <div className="flex items-center gap-3">
+                {checkoutStep !== "cart" && (
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(checkoutStep === "ready" ? "details" : "cart")}
+                    className="btn btn-ghost btn-sm h-10 min-h-10 w-10 rounded-xl p-0"
+                    aria-label="Regresar"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                )}
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Los Carnales</p>
+                  <h2 className="mt-1 text-2xl font-black">
+                    {checkoutStep === "cart" && "Tu pedido"}
+                    {checkoutStep === "details" && "Datos del pedido"}
+                    {checkoutStep === "ready" && "Listo para pago"}
+                  </h2>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCartOpen(false)}
-                className="btn btn-ghost btn-sm rounded-xl"
-              >
-                Cerrar
-              </button>
+              <button type="button" onClick={closeCart} className="btn btn-ghost btn-sm rounded-xl">Cerrar</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5">
-              <div className="space-y-3">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-base-300 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-black text-base-content">{item.name}</p>
-                        <p className="mt-1 text-xs text-base-content/50">{formatPrice(item.price)}</p>
+            {checkoutStep === "cart" && (
+              <>
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div className="space-y-3">
+                    {cartItems.map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-base-300 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-black text-base-content">{item.name}</p>
+                            <p className="mt-1 text-xs text-base-content/50">{formatPrice(item.price)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeProduct(item.id)}
+                            className="btn btn-ghost btn-xs rounded-lg text-error"
+                            aria-label={`Eliminar ${item.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-base-content/50">Cantidad</span>
+                          <div className="flex items-center gap-2 rounded-xl bg-base-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => decreaseProduct(item.id)}
+                              className="btn btn-ghost btn-xs h-8 min-h-8 w-8 rounded-lg p-0"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="min-w-5 text-center text-sm font-black">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => addProduct(item.id)}
+                              className="btn btn-primary btn-xs h-8 min-h-8 w-8 rounded-lg p-0"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-base-300 bg-base-200/50 p-5">
+                  <div className="mb-4 rounded-2xl bg-warning/10 px-4 py-3 text-sm leading-5 text-base-content/70">
+                    Los precios todavía no están cargados; por ahora este flujo sirve para validar la experiencia antes del pago real.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep("details")}
+                    className="btn btn-primary w-full rounded-xl"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {checkoutStep === "details" && (
+              <>
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div>
+                    <p className="text-sm font-black text-base-content">¿Cómo quieres tu pedido?</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
                         type="button"
-                        onClick={() => removeProduct(item.id)}
-                        className="btn btn-ghost btn-xs rounded-lg text-error"
-                        aria-label={`Eliminar ${item.name}`}
+                        onClick={() => setOrderType("dine-in")}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          orderType === "dine-in"
+                            ? "border-primary bg-primary/10 ring-1 ring-primary"
+                            : "border-base-300 hover:bg-base-200/60"
+                        }`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Store className="h-6 w-6 text-primary" />
+                        <p className="mt-3 font-black">Comer aquí</p>
+                        <p className="mt-1 text-xs leading-5 text-base-content/55">El pedido se entregará en tu mesa.</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOrderType("takeout")
+                          setTable("")
+                        }}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          orderType === "takeout"
+                            ? "border-primary bg-primary/10 ring-1 ring-primary"
+                            : "border-base-300 hover:bg-base-200/60"
+                        }`}
+                      >
+                        <PackageCheck className="h-6 w-6 text-primary" />
+                        <p className="mt-3 font-black">Para llevar</p>
+                        <p className="mt-1 text-xs leading-5 text-base-content/55">Te avisaremos cuando esté listo.</p>
                       </button>
                     </div>
-
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-base-content/50">Cantidad</span>
-                      <div className="flex items-center gap-2 rounded-xl bg-base-200 p-1">
-                        <button
-                          type="button"
-                          onClick={() => decreaseProduct(item.id)}
-                          className="btn btn-ghost btn-xs h-8 min-h-8 w-8 rounded-lg p-0"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="min-w-5 text-center text-sm font-black">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => addProduct(item.id)}
-                          className="btn btn-primary btn-xs h-8 min-h-8 w-8 rounded-lg p-0"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="border-t border-base-300 bg-base-200/50 p-5">
-              <div className="mb-4 rounded-2xl bg-warning/10 px-4 py-3 text-sm leading-5 text-base-content/70">
-                Los precios todavía no están cargados. El pedido no se enviará hasta conectar el catálogo definitivo.
-              </div>
-              <button type="button" disabled className="btn btn-primary w-full rounded-xl">
-                Continuar con el pedido
-              </button>
-            </div>
+                  <div className="mt-6 space-y-4">
+                    <label className="block">
+                      <span className="mb-2 flex items-center gap-2 text-sm font-bold text-base-content">
+                        <UserRound className="h-4 w-4 text-primary" /> Nombre
+                      </span>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(event) => setCustomerName(event.target.value)}
+                        placeholder="Ej. Miguel"
+                        autoComplete="name"
+                        className="input input-bordered w-full rounded-xl"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 flex items-center gap-2 text-sm font-bold text-base-content">
+                        <Phone className="h-4 w-4 text-primary" /> Teléfono
+                      </span>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(event) => setPhone(event.target.value)}
+                        placeholder="Ej. 614 123 4567"
+                        autoComplete="tel"
+                        className="input input-bordered w-full rounded-xl"
+                      />
+                      <span className="mt-2 block text-xs leading-5 text-base-content/50">
+                        Lo usaremos para identificar el pedido y, más adelante, enviar confirmaciones y recibos por SMS.
+                      </span>
+                    </label>
+
+                    {orderType === "dine-in" && (
+                      <label className="block">
+                        <span className="mb-2 flex items-center gap-2 text-sm font-bold text-base-content">
+                          <MapPin className="h-4 w-4 text-primary" /> Mesa
+                        </span>
+                        <input
+                          type="text"
+                          value={table}
+                          onChange={(event) => setTable(event.target.value)}
+                          placeholder="Ej. Mesa 4"
+                          className="input input-bordered w-full rounded-xl"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-base-300 bg-base-200/50 p-5">
+                  <button
+                    type="button"
+                    disabled={!customerDataValid}
+                    onClick={() => setCheckoutStep("ready")}
+                    className="btn btn-primary w-full rounded-xl"
+                  >
+                    Revisar antes de pagar
+                  </button>
+                  {!customerDataValid && (
+                    <p className="mt-2 text-center text-xs text-base-content/45">
+                      Completa tipo de pedido, nombre, teléfono y mesa cuando corresponda.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {checkoutStep === "ready" && (
+              <>
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div className="rounded-3xl border border-base-300 bg-base-200/40 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Resumen</p>
+                    <dl className="mt-4 space-y-4 text-sm">
+                      <div>
+                        <dt className="text-base-content/45">Cliente</dt>
+                        <dd className="mt-1 font-black">{customerName.trim()}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-base-content/45">Teléfono</dt>
+                        <dd className="mt-1 font-black">{phone}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-base-content/45">Tipo de pedido</dt>
+                        <dd className="mt-1 font-black">{orderType === "dine-in" ? "Comer aquí" : "Para llevar"}</dd>
+                      </div>
+                      {orderType === "dine-in" && (
+                        <div>
+                          <dt className="text-base-content/45">Mesa</dt>
+                          <dd className="mt-1 font-black">{table.trim()}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt className="text-base-content/45">Productos</dt>
+                        <dd className="mt-2 space-y-1">
+                          {cartItems.map((item) => (
+                            <div key={item.id} className="flex justify-between gap-3">
+                              <span>{item.name}</span>
+                              <strong>× {item.quantity}</strong>
+                            </div>
+                          ))}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-info/10 px-4 py-3 text-sm leading-6 text-base-content/70">
+                    Este es el punto donde conectaremos el pago. Todavía no se guarda ni se envía ningún pedido real.
+                  </div>
+                </div>
+
+                <div className="border-t border-base-300 bg-base-200/50 p-5">
+                  <button type="button" disabled className="btn btn-primary w-full rounded-xl">
+                    Continuar al pago
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
