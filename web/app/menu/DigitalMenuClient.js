@@ -42,7 +42,7 @@ const products = [
     id: "montado",
     name: "Montado",
     category: "especialidades",
-    detail: "Especialidad",
+    detail: "1 pieza",
     description: "Tortilla de harina con carne y asadero, preparada al estilo de la casa.",
     ingredients: ["Tortilla de harina", "150 g de carne", "Asadero"],
     price: null,
