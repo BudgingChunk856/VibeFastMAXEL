@@ -51,9 +51,9 @@ const products = [
   },
   {
     id: "quesicarne",
-    name: "Quesicarne",
+    name: "Quesicarnes",
     category: "especialidades",
-    detail: "Especialidad",
+    detail: "2 piezas",
     description: "Tortilla de maíz con carne y asadero para una combinación sencilla y contundente.",
     ingredients: ["Tortilla de maíz", "150 g de carne", "Asadero"],
     price: null,
