@@ -6,5 +6,14 @@ export const metadata = {
 }
 
 export default function MenuPage() {
-  return <DigitalMenuClient />
+  return (
+    <div className="los-carnales-menu">
+      <style>{`
+        .los-carnales-menu article > div:first-child > span.absolute {
+          display: none;
+        }
+      `}</style>
+      <DigitalMenuClient />
+    </div>
+  )
 }
